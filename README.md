@@ -1,64 +1,82 @@
 # RepairLoop
 
-STEM coding agent for the Nebius × NVIDIA hackathon  
-**Track: Coding & Agentic Engineering**
+Coding agent for lab-style STEM problems.
 
-Nemotron writes a `solution.py`, I run it against a hidden grader, failures go back into the model until tests pass or the iteration budget dies. That’s it.
+It calls **NVIDIA Nemotron** through **Nebius Token Factory**, writes into a workspace, runs a hidden grader, and keeps repairing until the tests pass (or the round budget is gone).
 
-Inference goes through **Nebius Token Factory** (`api.tokenfactory.nebius.com`) with an **NVIDIA Nemotron** model. The sandbox is local stdlib Python — no network, short timeout.
+Built for the Nebius × NVIDIA Global AI Hackathon — **Coding & Agentic Engineering**.
 
-I built this because most “coding agent” demos never actually hit a real test harness. Coming from terminal-bench style task work, that felt backwards.
+I’ve spent a while authoring terminal / agent eval tasks in math + EE/physics. Most demos skip the grader. This one doesn’t.
 
-## Setup
+## What you get
+
+- tool-using agent (`write_file`, `read_file`, `run_python`, `run_tests`, optional `web_search` via Tavily)
+- 8 graded STEM tasks (circuits, arrays, DSP, control, sensors, quaternions, modal freq)
+- reference **oracles** that prove every grader is solvable without an LLM
+- JSONL **transcripts** + rough token/cost meter
+- Streamlit UI + CLI + Docker
+- pytest covering schema, sandbox, and oracles
+
+## Quick start
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e .
 cp .env.example .env
-# put your Token Factory key in .env
+# set NEBIUS_API_KEY (and optional TAVILY_API_KEY)
 ```
 
-Get a key: https://tokenfactory.nebius.com/ (API keys).  
-Hackathon credits: Devpost / Builders Program / code `NEBIUS-DEVPOST-GLOBAL26`.
-
-## Run
-
 ```bash
+# UI
 streamlit run app.py
+
+# CLI
+python -m repairloop.cli tasks
+python -m repairloop.cli run rc_step_response
+python -m repairloop.cli run beamforming_delay --iters 6
+
+# prove graders locally (no API key)
+python -m repairloop.eval --oracles-only
+pytest -q
 ```
 
-or headless:
-
-```bash
-python cli.py --task rc_step_response
-python cli.py --task beamforming_delay
-python cli.py --task damped_modes   # flaky on nano, expected
-```
+Token Factory key: https://tokenfactory.nebius.com/  
+Hackathon credits form code often listed as `NEBIUS-DEVPOST-GLOBAL26` on Devpost.
 
 ## Layout
 
 ```
-agent/llm.py       Token Factory client
-agent/sandbox.py   run solution + tests
-agent/loop.py      write / repair loop
-agent/prompts.py   system + repair prompts
-tasks/*.json       prompts + graders
-app.py             streamlit ui
-cli.py             no-ui runner
-notes.txt          scratch notes from building this
-SUBMIT.md          copy-paste for Devpost
+repairloop/          library (llm, tools, sandbox, session, eval)
+tasks/               grader JSON (prompt + hidden tests)
+oracles/             known-good solutions for offline checks
+tests/               pytest
+runs/                transcripts (gitignored)
+app.py               streamlit
+Dockerfile
+SUBMIT.md            Devpost paste pack
+notes.txt            build notes
 ```
 
 Default model: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`  
-Override with `NEBIUS_MODEL` (Super/Ultra if you have credits).
+Override with `NEBIUS_MODEL`.
 
-## Hackathon compliance
+## How it maps to the rules
 
-- runtime call to Nebius Token Factory ✓  
-- NVIDIA open model (Nemotron) ✓  
-- agent that writes, runs, and tests code ✓  
+| Rule | Here |
+|---|---|
+| Runs on Nebius | live chat.completions → `api.tokenfactory.nebius.com` |
+| NVIDIA open model | Nemotron Nano (Super/Ultra via env) |
+| Coding & Agentic Engineering | agent writes, executes, grades, repairs |
+| Optional Tavily | set `TAVILY_API_KEY` → `web_search` tool |
+
+## Notes / limits
+
+- sandbox is stdlib Python only (intentional — matches a lot of eval constraints)
+- `damped_modes` and `snr_fft_tone` are the flaky ones on Nano; expect retries
+- price estimates in the UI are approximate from a static table in `config.py`
 
 ## License
 
-MIT
+MIT — see LICENSE.

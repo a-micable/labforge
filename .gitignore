@@ -6,5 +6,10 @@ __pycache__/
 .pytest_cache/
 .streamlit/secrets.toml
 workspace/
+runs/
+*.egg-info/
+dist/
+build/
 *.log
-.DS_Storerepairloop-submit.zip
+.DS_Store
+repairloop-submit.zip
