@@ -1,0 +1,32 @@
+why this exists
+---------------
+i've been writing terminal / agent eval tasks for a while (science + EE style).
+the annoying part of those benchmarks is always the same: the model dumps code once
+and never actually runs it against a grader. so for the nebius/nvidia hackathon i
+wanted a tiny loop that mirrors what we care about in those evals:
+
+  prompt -> write solution.py -> run hidden tests -> feed stderr back -> try again
+
+stack choice
+------------
+token factory is openai-compatible so wiring nemotron was ~20 lines.
+started on nano (cheap), kept super/ultra as env overrides if credits allow.
+
+tasks
+-----
+rc fit         - undergrad circuits, good smoke test
+ula delays     - array / beamforming, matches my EE bias
+damped modes   - harder; fft peak picking usually fails the K=3 noisy case
+
+things that bit me
+------------------
+- model loves markdown fences; had to strip them before writing the file
+- early sandbox still had network env leaked in; scrubbed to a tiny env
+- damped_modes with only stdlib is rough; don't expect nano to nail it every time
+
+todo before submit
+------------------
+[ ] put NEBIUS_API_KEY in .env
+[ ] record <3min video of rc_step_response (show a fail then a pass)
+[ ] push public github + paste urls into devpost
+[ ] fill feedback box (draft in SUBMIT.md)
