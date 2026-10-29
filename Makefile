@@ -1,4 +1,4 @@
-.PHONY: install test oracles run cli docker
+.PHONY: install test oracles run api cli docker
 
 install:
 	python3 -m venv .venv
@@ -13,8 +13,11 @@ oracles:
 run:
 	. .venv/bin/activate && streamlit run app.py
 
+api:
+	. .venv/bin/activate && uvicorn repairloop.api:app --port 8080
+
 cli:
 	. .venv/bin/activate && python -m repairloop.cli tasks
 
 docker:
-	docker build -t repairloop:local .
+	docker build -t labforge:local .

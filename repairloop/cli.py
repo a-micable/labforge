@@ -6,6 +6,7 @@ import sys
 
 from . import __version__
 from .config import load_settings
+from .pipeline import run_pipeline
 from .session import run_session
 from .tasks import list_tasks, load_task
 
@@ -13,7 +14,7 @@ from .tasks import list_tasks, load_task
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="repairloop",
-        description="STEM coding agent on Nebius Token Factory / NVIDIA Nemotron",
+        description="LabForge — STEM coding agents on Nebius / Nemotron",
     )
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -21,6 +22,13 @@ def main(argv: list[str] | None = None) -> int:
     run_p = sub.add_parser("run", help="run agent on one task")
     run_p.add_argument("task")
     run_p.add_argument("--iters", type=int, default=None)
+    run_p.add_argument(
+        "--pipeline",
+        action="store_true",
+        help="research → code → critic (default for prize demos)",
+    )
+    run_p.add_argument("--no-tavily", action="store_true")
+    run_p.add_argument("--no-critic", action="store_true")
 
     sub.add_parser("tasks", help="list tasks")
 
@@ -34,7 +42,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "tasks":
         for t in list_tasks():
-            print(f"{t.id:20} {t.difficulty:8} {t.title}")
+            tags = ",".join(t.tags or [])
+            print(f"{t.id:24} {t.difficulty:8} {t.title}  [{tags}]")
         return 0
 
     if args.cmd == "eval":
@@ -57,23 +66,34 @@ def main(argv: list[str] | None = None) -> int:
         task = load_task(args.task)
 
         def on_progress(evt: dict) -> None:
-            kind = evt.get("event")
-            if kind == "tool":
-                print(f"  tool {evt.get('name')} -> {str(evt.get('result'))[:120]}")
-            elif kind == "thinking":
-                print(f"iter {evt.get('iteration')} …")
-            elif kind == "test":
-                print("  test ok=" + str(evt.get("ok")))
+            e = evt.get("event")
+            if e in {"pipeline", "research", "critic", "thinking", "tool", "test"}:
+                print(e, {k: v for k, v in evt.items() if k != "event"})
 
-        result = run_session(task, max_iters=args.iters, on_progress=on_progress)
-        print(json.dumps({
-            "success": result.success,
-            "iters": result.iterations,
-            "tokens": result.prompt_tokens + result.completion_tokens,
-            "est_cost_usd": result.est_cost_usd,
-            "transcript": result.transcript_path,
-            "error": result.error,
-        }, indent=2))
+        if args.pipeline:
+            result = run_pipeline(
+                task,
+                max_iters=args.iters,
+                use_tavily=not args.no_tavily,
+                use_critic=not args.no_critic,
+                on_progress=on_progress,
+            )
+        else:
+            result = run_session(task, max_iters=args.iters, on_progress=on_progress)
+
+        print(
+            json.dumps(
+                {
+                    "success": result.success,
+                    "iters": result.iterations,
+                    "tokens": result.prompt_tokens + result.completion_tokens,
+                    "est_cost_usd": result.est_cost_usd,
+                    "transcript": result.transcript_path,
+                    "error": result.error,
+                },
+                indent=2,
+            )
+        )
         if result.final_code:
             print("--- solution.py ---")
             print(result.final_code)

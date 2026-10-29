@@ -1,37 +1,38 @@
-repairloop — build notes
-========================
+labforge / repairloop — notes
+=============================
 
-intent
-------
-mirror the write/run/grade loop from terminal-bench style science tasks,
-but as a hackathon demo on Nebius + Nemotron instead of a closed eval harness.
+this grew out of terminal-bench science task work.
+v0.3 was a single repair loop. that wasn't enough for a real submission.
+v0.5 is the product shape:
 
-v0 was a thin fence-stripper. that looked like a weekend toy.
-v0.3 adds real tools, transcripts, oracles, more tasks, pytest, docker.
+  skills + tavily research
+  tool coder on token factory / nemotron
+  critic retry
+  sqlite leaderboard
+  fastapi + multipage ui
+  15 tasks with oracles + CI
 
-tasks
------
-easy:   thermistor_beta, wire_gauge_drop, quaternion_rotate, rc_step_response
-medium: beamforming_delay, pid_step, snr_fft_tone, damped_modes
-
-damped_modes is the stretch goal — DFT peak picking works on clean
-separated tones; noisy K=3 can still flake on nano.
+why graders matter
+------------------
+if the agent can "finish" without run_tests PASS, it's a chatbot.
+every demo path should end on a grader line.
 
 tavily
 ------
-optional on purpose. when the key is present the model gets web_search
-for formula reminders (beta model, array delay). graders never need net.
+one query per task in research. don't spray credits.
+graders stay offline on purpose.
 
-gotchas
--------
-- some Nemotron deployments ignore tools → session falls back to fence parse
-- always run `python -m repairloop.eval --oracles-only` before claiming a
-  new task is fair
-- don't commit .env or runs/
+demo order for video
+--------------------
+1. oracles-only
+2. pipeline rc_step_response with tavily on
+3. leaderboard
+4. api /health
 
-before submit
--------------
-[ ] NEBIUS_API_KEY live smoke on rc_step_response
-[ ] public github under a-micable/repairloop
-[ ] <3min youtube
-[ ] paste SUBMIT.md into Devpost
+todo
+----
+[ ] NEBIUS_API_KEY live run
+[ ] TAVILY_API_KEY for prize path
+[ ] push a-micable/repairloop (or labforge)
+[ ] youtube <3min
+[ ] submit before Oct 30 10:00am PT

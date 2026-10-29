@@ -1,8 +1,4 @@
-"""RepairLoop — Streamlit front-end for the Nebius/NVIDIA hackathon demo."""
-
-from __future__ import annotations
-
-from pathlib import Path
+"""LabForge home — multipage Streamlit entrypoint."""
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -11,18 +7,16 @@ load_dotenv()
 
 from repairloop import __version__
 from repairloop.config import load_settings
-from repairloop.session import run_session
 from repairloop.tasks import list_tasks
 
-st.set_page_config(page_title="RepairLoop", layout="wide")
+st.set_page_config(page_title="LabForge", layout="wide", page_icon="🧪")
 
 st.markdown(
     """
     <style>
-      .block-container { max-width: 1120px; padding-top: 1rem; }
-      h1 { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-           letter-spacing: -0.02em; font-size: 1.55rem; margin-bottom: 0.2rem; }
-      div[data-testid="stCaption"] { opacity: 0.7; }
+      .block-container { max-width: 1100px; padding-top: 1.4rem; }
+      h1 { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.7rem; }
+      .hero { line-height: 1.55; opacity: 0.9; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -30,102 +24,56 @@ st.markdown(
 
 settings = load_settings()
 tasks = list_tasks()
-by_id = {t.id: t for t in tasks}
 
-st.title("RepairLoop")
-st.caption(
-    f"v{__version__} · write / run / test / repair · "
-    "NVIDIA Nemotron on Nebius Token Factory"
+st.title("LabForge")
+st.caption(f"v{__version__} · Nebius Token Factory · NVIDIA Nemotron · Coding & Agentic Engineering")
+
+st.markdown(
+    f"""
+<div class="hero">
+
+STEM coding agents that have to **pass a hidden grader** — not chat demos that dump untested code.
+
+Pipeline: **research** (skills + optional Tavily) → **tool-using coder** → **critic retry**.  
+Inference on **Nebius Token Factory**. Default model **Nemotron Nano** (swap Super/Ultra in `.env`).
+
+</div>
+""",
+    unsafe_allow_html=True,
 )
 
-with st.sidebar:
-    st.markdown("**stack**")
-    st.text(f"model\n{settings.model}")
-    st.text(f"base\n{settings.base_url}")
-    st.write("nebius key:", "yes" if settings.has_nebius else "NO")
-    st.write("tavily:", "yes" if settings.has_tavily else "no")
-    max_iters = st.slider("max tool rounds", 1, 8, settings.max_iters)
-    st.markdown("---")
-    st.markdown(
-        "Coding & Agentic Engineering  \n"
-        "tools: write_file · run_python · run_tests"
-        + (" · web_search" if settings.has_tavily else "")
-    )
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("tasks", len(tasks))
+c2.metric("nebius", "ready" if settings.has_nebius else "need key")
+c3.metric("tavily", "on" if settings.has_tavily else "off")
+c4.metric("model", settings.model.split("/")[-1][:18])
 
-picked = st.selectbox(
-    "task",
-    options=[t.id for t in tasks],
-    format_func=lambda i: f"{by_id[i].title}  ·  {by_id[i].difficulty}",
-)
-task = by_id[picked]
-
-c1, c2 = st.columns([1.25, 1])
-with c1:
-    st.markdown("#### prompt")
-    st.text(task.prompt)
-with c2:
-    st.markdown("#### grader checks")
-    st.text(task.public_tests_hint)
-    if task.tags:
-        st.write("tags:", ", ".join(task.tags))
-
-go = st.button("run agent", type="primary")
-
-log = st.empty()
-code_panel = st.empty()
-status = st.empty()
-metrics = st.empty()
-
-if go:
-    if not settings.has_nebius:
-        status.error("Set NEBIUS_API_KEY in .env first")
-        st.stop()
-
-    lines: list[str] = []
-
-    def on_progress(evt: dict) -> None:
-        kind = evt.get("event")
-        if kind == "thinking":
-            lines.append(f"round {evt['iteration']}: model call")
-        elif kind == "tool":
-            lines.append(f"  {evt.get('name')}: {str(evt.get('result'))[:240]}")
-            if evt.get("name") == "write_file":
-                # reload code view lazily at end
-                pass
-            if evt.get("ok") is True:
-                lines.append("  grader PASS")
-            elif evt.get("ok") is False:
-                lines.append("  grader FAIL")
-        elif kind == "test":
-            lines.append("  grader " + ("PASS" if evt.get("ok") else "FAIL"))
-        log.text("\n".join(lines))
-
-    with st.spinner("token factory…"):
-        result = run_session(task, max_iters=max_iters, on_progress=on_progress)
-
-    if result.error:
-        status.error(result.error)
-    elif result.success:
-        status.success(f"passed in {result.iterations} round(s)")
-    else:
-        status.warning("still failing — see transcript")
-
-    metrics.write(
+st.markdown("### task suite")
+st.dataframe(
+    [
         {
-            "model": result.model,
-            "prompt_tokens": result.prompt_tokens,
-            "completion_tokens": result.completion_tokens,
-            "est_cost_usd": round(result.est_cost_usd, 6),
-            "transcript": result.transcript_path,
+            "id": t.id,
+            "title": t.title,
+            "difficulty": t.difficulty,
+            "tags": ", ".join(t.tags or []),
         }
-    )
-    code_panel.code(result.final_code or "# (no solution.py yet)", language="python")
+        for t in tasks
+    ],
+    use_container_width=True,
+    hide_index=True,
+)
 
-st.markdown("---")
-runs = Path("runs")
-if runs.exists():
-    recent = sorted(runs.glob("*.jsonl"), reverse=True)[:8]
-    if recent:
-        st.markdown("#### recent transcripts")
-        for p in recent:
-            st.text(str(p))
+st.markdown(
+    """
+### pages
+- **Run Agent** — full pipeline or single tool loop  
+- **Leaderboard** — pass rates / cost by model  
+- **Skills & Replay** — local skill pack + JSONL transcripts  
+
+### offline proof
+```bash
+python -m repairloop.eval --oracles-only
+pytest -q
+```
+"""
+)

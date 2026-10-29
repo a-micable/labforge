@@ -1,82 +1,90 @@
-# RepairLoop
+# LabForge
 
-Coding agent for lab-style STEM problems.
+**Nebius × NVIDIA Global AI Hackathon**  
+**Track: Coding & Agentic Engineering**  
+*(Best Use of Tavily eligible when `TAVILY_API_KEY` is set)*
 
-It calls **NVIDIA Nemotron** through **Nebius Token Factory**, writes into a workspace, runs a hidden grader, and keeps repairing until the tests pass (or the round budget is gone).
+LabForge is a STEM coding-agent workbench. Agents don’t get to “look done” — they have to **write code, run it, and pass a hidden grader**, the same idea behind terminal / agent eval harnesses, but as a product you can demo on Nebius Token Factory with **NVIDIA Nemotron**.
 
-Built for the Nebius × NVIDIA Global AI Hackathon — **Coding & Agentic Engineering**.
+I built this after months of writing science/EE-style agent tasks. Chat demos that never hit a test harness don’t transfer. This one does.
 
-I’ve spent a while authoring terminal / agent eval tasks in math + EE/physics. Most demos skip the grader. This one doesn’t.
+## What it is
 
-## What you get
-
-- tool-using agent (`write_file`, `read_file`, `run_python`, `run_tests`, optional `web_search` via Tavily)
-- 8 graded STEM tasks (circuits, arrays, DSP, control, sensors, quaternions, modal freq)
-- reference **oracles** that prove every grader is solvable without an LLM
-- JSONL **transcripts** + rough token/cost meter
-- Streamlit UI + CLI + Docker
-- pytest covering schema, sandbox, and oracles
-
-## Quick start
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
-cp .env.example .env
-# set NEBIUS_API_KEY (and optional TAVILY_API_KEY)
+```
+research (local skills + optional Tavily)
+        ↓
+tool-using coder  (write_file / run_python / run_tests)
+        ↓
+hidden STEM grader
+        ↓
+critic retry if still failing
+        ↓
+SQLite leaderboard + JSONL transcripts
 ```
 
+- **15 graded tasks** across circuits, arrays, DSP, control, sensors, PDEs, stats, robotics basics  
+- **Reference oracles** — every grader is proven solvable offline (CI runs this)  
+- **Skill pack** — curated formula cards retrieved into the research stage  
+- **FastAPI** + multipage **Streamlit** console  
+- Token / rough cost meter on Nebius usage  
+
+## Setup
+
 ```bash
-# UI
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && pip install -e .
+cp .env.example .env
+# NEBIUS_API_KEY=...   from https://tokenfactory.nebius.com/
+# TAVILY_API_KEY=...   optional, unlocks research web_search / Tavily prize path
+```
+
+## Run
+
+```bash
+# UI (pages in sidebar)
 streamlit run app.py
 
-# CLI
-python -m repairloop.cli tasks
-python -m repairloop.cli run rc_step_response
-python -m repairloop.cli run beamforming_delay --iters 6
+# full prize-path pipeline on one task
+python -m repairloop.cli run rc_step_response --pipeline
 
-# prove graders locally (no API key)
+# single tool loop
+python -m repairloop.cli run beamforming_delay
+
+# HTTP API
+uvicorn repairloop.api:app --port 8080
+# POST /run  GET /leaderboard  GET /tasks  GET /skills?q=pid
+
+# offline fairness proof (no API key)
 python -m repairloop.eval --oracles-only
 pytest -q
 ```
 
-Token Factory key: https://tokenfactory.nebius.com/  
-Hackathon credits form code often listed as `NEBIUS-DEVPOST-GLOBAL26` on Devpost.
-
-## Layout
+## Repo map
 
 ```
-repairloop/          library (llm, tools, sandbox, session, eval)
-tasks/               grader JSON (prompt + hidden tests)
-oracles/             known-good solutions for offline checks
-tests/               pytest
-runs/                transcripts (gitignored)
-app.py               streamlit
-Dockerfile
-SUBMIT.md            Devpost paste pack
-notes.txt            build notes
+repairloop/     agent core (session, pipeline, tools, store, api)
+tasks/          15 grader JSON specs
+oracles/        known-good solutions
+skills/         formula cards for research retrieval
+pages/          Streamlit multipage UI
+tests/          pytest
+.github/        oracle CI
+SUBMIT.md       Devpost paste pack
+docs/           architecture notes
 ```
 
 Default model: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`  
-Override with `NEBIUS_MODEL`.
+Override with `NEBIUS_MODEL` (Super/Ultra when you have credits).
 
-## How it maps to the rules
+## Hackathon checklist
 
-| Rule | Here |
+| Requirement | LabForge |
 |---|---|
-| Runs on Nebius | live chat.completions → `api.tokenfactory.nebius.com` |
-| NVIDIA open model | Nemotron Nano (Super/Ultra via env) |
-| Coding & Agentic Engineering | agent writes, executes, grades, repairs |
-| Optional Tavily | set `TAVILY_API_KEY` → `web_search` tool |
-
-## Notes / limits
-
-- sandbox is stdlib Python only (intentional — matches a lot of eval constraints)
-- `damped_modes` and `snr_fft_tone` are the flaky ones on Nano; expect retries
-- price estimates in the UI are approximate from a static table in `config.py`
+| Nebius Token Factory runtime | live chat.completions |
+| NVIDIA open model | Nemotron |
+| Coding & Agentic Engineering | writes + runs + tests + repairs |
+| Tavily (optional prize) | research stage `web_search` |
 
 ## License
 
-MIT — see LICENSE.
+MIT

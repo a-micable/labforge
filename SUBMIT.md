@@ -1,47 +1,55 @@
-# Devpost paste — RepairLoop
+# Devpost — LabForge
 
 **Track:** Coding & Agentic Engineering  
-**Deadline:** Oct 30, 2026 10:00 AM PT
+**Also claim:** Best Use of Tavily (if key enabled in demo)
 
 ## Project name
-RepairLoop
+LabForge
 
 ## Tagline
-A STEM coding agent that writes Python, runs hidden tests, and repairs with NVIDIA Nemotron on Nebius Token Factory.
+Multi-stage STEM coding agents that must pass hidden graders — NVIDIA Nemotron on Nebius Token Factory, with Tavily-grounded research.
 
 ## Built with
-Nebius Token Factory, NVIDIA Nemotron, Python, Streamlit, Tavily (optional), Docker
+Nebius Token Factory, NVIDIA Nemotron, Tavily, Python, FastAPI, Streamlit, SQLite, Docker
 
 ## Description
 
-### What it does
-RepairLoop is a tool-using coding agent for lab-style STEM problems (circuits, arrays, DSP, control, sensors). It calls Nemotron on Nebius Token Factory, writes into a workspace, executes code, hits a hidden grader, and loops on failures.
+### Inspiration
+I’ve been authoring terminal-bench style science/EE agent tasks. The gap I kept seeing in hackathon demos: models dump code and never face a real grader. LabForge closes that gap as a product.
 
-This is closer to how terminal coding evals work than a chat “copilot” demo. There are eight graded tasks, reference oracles so every grader is proven solvable offline, JSONL transcripts, and a rough token/cost meter.
+### What it does
+LabForge runs a **research → code → critic** pipeline on a suite of **15 STEM tasks** (circuits, arrays, DSP, control, sensors, heat equation, stats, robotics basics).
+
+1. **Research** — retrieves local skill cards; optionally calls **Tavily** for formula grounding  
+2. **Coder** — tool-using Nemotron agent (`write_file`, `run_python`, `run_tests`) on Nebius Token Factory  
+3. **Grader** — hidden unit tests (stdlib sandbox)  
+4. **Critic** — if failing, a reviewer pass feeds another coding burst  
+5. **Telemetry** — JSONL transcripts + SQLite leaderboard (pass rate / tokens / cost by model)
+
+Offline, `oracles/` + CI prove every grader is solvable without an LLM — so difficulty is intentional, not broken.
 
 ### How I built it
-- `repairloop/session.py` — tool loop (write_file / run_python / run_tests / optional web_search)
-- `repairloop/llm.py` — OpenAI-compatible Nebius client + usage meter
-- `repairloop/sandbox.py` — per-run workspace with path guards + timeouts
-- `tasks/*.json` — prompts + hidden unit tests
-- `oracles/` — deterministic solutions; `python -m repairloop.eval --oracles-only`
-- Streamlit UI (`app.py`), CLI, Docker, pytest
+Python package `repairloop` (LabForge product surface): pipeline orchestrator, OpenAI-compatible Nebius client, workspace sandbox, skill retrieval, FastAPI, multipage Streamlit, pytest, GitHub Actions.
 
 ### Challenges
-Getting models to stop narrating and actually call tools; stripping fences when they dump raw code; keeping the sandbox strict enough that “just import numpy” isn’t a fake win.
+Tool-calling reliability across models (fallback fence-parse path), keeping the sandbox honest (no numpy shortcuts), and designing tasks that are hard for agents but trivial for a correct oracle.
 
 ### What’s next
-More physics/EE tasks from the same authoring pipeline, stricter sandboxing, and a small public leaderboard over the task suite.
+Public task packs, harsher sandboxes, and model bake-offs (Nano vs Super) on the leaderboard.
 
-## Nebius / NVIDIA usage
-Runtime inference via Nebius Token Factory chat completions. Default model `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`. Optional Tavily `web_search` when `TAVILY_API_KEY` is set.
+## Nebius / NVIDIA
+Runtime inference via Token Factory. Default `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`.
+
+## Tavily
+Research stage issues a targeted search (formulas/constants), injects snippets into the coder brief. Graders never need network — Tavily is for grounding, not cheating.
 
 ## Feedback
-Token Factory’s OpenAI-compatible API made the agent thin. Nano is fast enough for multi-round repair; docs could highlight Nemotron model IDs on the quickstart. A hackathon preset (pinned model + agent rate-limit tips) would help.
+Token Factory’s OpenAI-compatible tools API made the agent loop portable. Nano is great for iteration; Super for tougher tasks. Would love a hackathon “Nemotron + tools” preset and clearer rate-limit guidance for multi-agent pipelines.
 
-## Video outline (~2 min)
-1. Show README + blurred `.env` with Token Factory URL  
-2. `pytest` / oracle check scrolling PASS  
-3. Streamlit: run `rc_step_response` — tool calls — fail — repair — PASS  
-4. Flash beamforming or thermistor task  
-5. Point at public GitHub
+## Video (~2:30)
+1. Home metrics (15 tasks, Nebius ready)  
+2. `pytest` / oracle PASS scroll  
+3. Run pipeline on RC task — show Tavily/skills research → tools → PASS  
+4. Leaderboard page  
+5. Flash FastAPI `/health` + `/tasks`  
+6. Repo link
